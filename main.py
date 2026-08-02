@@ -4,8 +4,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from dotenv import load_dotenv
 
-from models import Base, Secret
-from schemas import SecretCreate
+from models import Base, Secret, User
+from schemas import SecretCreate, UserCreate
 
 # Load environment variables (for local testing)
 load_dotenv()
@@ -43,6 +43,21 @@ def get_db():
 @app.get("/")
 def read_root():
     return {"status": "online", "message": "DropBox IRL Backend is running."}
+
+@app.post("/users")
+def create_user(user_data: UserCreate, db: Session = Depends(get_db)):
+    try:
+        new_user = User(
+            id=user_data.id,
+            username=user_data.username,
+            email=user_data.email
+        )
+        db.add(new_user)
+        db.commit()
+        return {"status": "success", "message": "User created!", "user_id": new_user.id}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/drop")
 def drop_secret(secret_data: SecretCreate, db: Session = Depends(get_db)):
