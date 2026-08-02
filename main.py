@@ -19,6 +19,12 @@ if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 engine = create_engine(DATABASE_URL)
+from models import Base
+
+# (Keep your existing engine creation code here)
+
+# This command tells SQLAlchemy to create the tables in PostgreSQL if they don't exist
+Base.metadata.create_all(bind=engine)
 
 @app.get("/")
 def read_root():
