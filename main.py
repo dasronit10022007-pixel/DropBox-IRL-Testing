@@ -11,7 +11,13 @@ app = FastAPI(title="DropBox IRL API")
 
 # Setup Database Connection
 # We will inject the Aiven Service URI via Render's environment variables
+# Setup Database Connection
 DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Fix SQLAlchemy dialect prefix if necessary
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 engine = create_engine(DATABASE_URL)
 
 @app.get("/")
