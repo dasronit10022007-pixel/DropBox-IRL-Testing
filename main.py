@@ -26,7 +26,10 @@ engine = create_engine(DATABASE_URL)
 # Initialize SessionLocal to handle database connections
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Generate tables automatically in Aiven if they do not exist
+# --- TEMPORARY SCHEMA RESET ---
+# This drops all existing tables before recreating them to ensure the schema is synced.
+# IMPORTANT: Comment out or remove the drop_all line after your first successful test!
+Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 # Dependency injection to get the database session
