@@ -4,6 +4,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from dotenv import load_dotenv
 
+from geoalchemy2.functions import ST_DWithin
+from geoalchemy2.elements import WKTElement
+from geoalchemy2.shape import to_shape
+
 from models import Base, Secret, User
 from schemas import SecretCreate, UserCreate
 
@@ -26,10 +30,8 @@ engine = create_engine(DATABASE_URL)
 # Initialize SessionLocal to handle database connections
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# --- TEMPORARY SCHEMA RESET ---
-# This drops all existing tables before recreating them to ensure the schema is synced.
-# IMPORTANT: Comment out or remove the drop_all line after your first successful test!
-Base.metadata.drop_all(bind=engine)
+# --- SCHEMA MANAGEMENT ---
+# Base.metadata.drop_all(bind=engine)  # Safe: Commented out to prevent accidental data wipes!
 Base.metadata.create_all(bind=engine)
 
 # Dependency injection to get the database session
@@ -62,7 +64,7 @@ def create_user(user_data: UserCreate, db: Session = Depends(get_db)):
 @app.post("/drop")
 def drop_secret(secret_data: SecretCreate, db: Session = Depends(get_db)):
     try:
-        # Convert the lat/lng into a PostGIS POINT geometry
+        # Convert the lat/lng into a PostGIS POINT geometry (Longitude FIRST)
         point_location = f"POINT({secret_data.lng} {secret_data.lat})"
         
         # Create the database row
@@ -81,4 +83,42 @@ def drop_secret(secret_data: SecretCreate, db: Session = Depends(get_db)):
     
     except Exception as e:
         db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/secrets/nearby")
+def get_nearby_secrets(
+    lat: float, 
+    lng: float, 
+    radius_meters: float = 1000.0, 
+    db: Session = Depends(get_db)
+):
+    """
+    Fetch secrets within a given radius (in meters) from latitude and longitude.
+    """
+    try:
+        # Construct PostGIS WKT Point (Longitude ALWAYS comes first in PostGIS WKT)
+        user_point = WKTElement(f"POINT({lng} {lat})", srid=4326)
+
+        # Spatial query using ST_DWithin
+        raw_secrets = db.query(Secret).filter(
+            ST_DWithin(Secret.location, user_point, radius_meters)
+        ).all()
+
+        # Format spatial output cleanly for JSON response
+        formatted_secrets = []
+        for secret in raw_secrets:
+            point = to_shape(secret.location)
+            formatted_secrets.append({
+                "id": secret.id,
+                "creator_id": secret.creator_id,
+                "message": secret.message,
+                "lat": point.y,
+                "lng": point.x,
+                "created_at": secret.created_at,
+                "expires_at": secret.expires_at
+            })
+
+        return formatted_secrets
+
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

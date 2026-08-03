@@ -5,3 +5,6 @@ geoalchemy2
 psycopg2-binary
 python-dotenv
 shapely
+passlib[bcrypt]
+pyjwt
+python-multipart

@@ -10,6 +10,6 @@ class SecretCreate(BaseModel):
     expires_at: Optional[datetime] = None  # Leave null for permanent premium drops
 
 class UserCreate(BaseModel):
-    id: str
     username: str
     email: str
+    password: str # <--- ADDED THIS LINE (and removed 'id')

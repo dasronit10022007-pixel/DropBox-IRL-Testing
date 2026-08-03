@@ -12,6 +12,7 @@ class User(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
+    hashed_password = Column(String, nullable=False) # <--- ADDED THIS LINE
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class Secret(Base):
