@@ -11,30 +11,25 @@ load_dotenv()
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "fallback-secret-do-not-use-in-prod")
 ALGORITHM = "HS256"
 
-# Changed from 24 hours to 30 days (60 minutes * 24 hours * 30 days)
+# 30 days expiration (60 minutes * 24 hours * 30 days)
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30  
 
 # Password hashing context using bcrypt
 pw_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# ... (Keep your hash_password, verify_password, and create_access_token functions exactly the same below this)
-
-
 def hash_password(password: str) -> str:
-    """Hashes a plain text password."""
-    return pw_context.hash(password)
-
+    # Explicitly truncate to 72 characters to bypass the strict bcrypt 4.0.0+ length bug
+    truncated_password = password[:72]
+    return pw_context.hash(truncated_password)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verifies a plain password against a stored hash."""
-    return pw_context.verify(plain_password, hashed_password)
+    # Truncate the incoming plain password to match the hashing logic
+    truncated_password = plain_password[:72]
+    return pw_context.verify(truncated_password, hashed_password)
 
-
-def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
-    """Generates a signed JWT access token."""
+def create_access_token(data: dict):
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
